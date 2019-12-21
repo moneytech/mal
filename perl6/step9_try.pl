@@ -103,6 +103,7 @@ sub eval ($ast is copy, $env is copy) {
       when 'try*' {
         return eval($a1, $env);
         CATCH {
+          .rethrow if !$a2;
           my $ex = $_ ~~ X::MalThrow ?? .value !! MalString(.Str);
           my $new_env = $env;
           $env.set($a2[1].val, $ex);
@@ -134,9 +135,8 @@ sub MAIN ($source_file?, *@args) {
   $repl_env.set('eval', MalCode({ eval($^a, $repl_env) }));
   $repl_env.set('*ARGV*', MalList([@args.map({ MalString($_) })]));
   rep(q{(def! not (fn* (a) (if a false true)))});
-  rep(q{(def! load-file (fn* (f) (eval (read-string (str "(do " (slurp f) ")")))))});
+  rep(q{(def! load-file (fn* (f) (eval (read-string (str "(do " (slurp f) "\nnil)")))))});
   rep(q{(defmacro! cond (fn* (& xs) (if (> (count xs) 0) (list 'if (first xs) (if (> (count xs) 1) (nth xs 1) (throw "odd number of forms to cond")) (cons 'cond (rest (rest xs)))))))});
-  rep(q{(defmacro! or (fn* (& xs) (if (empty? xs) nil (if (= 1 (count xs)) (first xs) `(let* (or_FIXME ~(first xs)) (if or_FIXME or_FIXME (or ~@(rest xs))))))))});
 
   if ($source_file.defined) {
     rep("(load-file \"$source_file\")");
@@ -146,7 +146,8 @@ sub MAIN ($source_file?, *@args) {
   while (my $line = prompt 'user> ').defined {
     say rep($line);
     CATCH {
-      when X::MalException { .Str.say }
+      when X::MalThrow { say "Error: " ~ pr_str(.value, True) }
+      when X::MalException { say "Error: " ~ .Str }
     }
   }
 }

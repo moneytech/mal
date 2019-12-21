@@ -2,6 +2,7 @@
 
 local table = require('table')
 
+package.path = '../lua/?.lua;' .. package.path
 local readline = require('readline')
 local utils = require('utils')
 local types = require('types')
@@ -51,7 +52,7 @@ end
 function macroexpand(ast, env)
     while is_macro_call(ast, env) do
         local mac = env:get(ast[1])
-        ast = mac.fn(unpack(ast:slice(2)))
+        ast = mac.fn(table.unpack(ast:slice(2)))
     end
     return ast
 end
@@ -129,13 +130,13 @@ function EVAL(ast, env)
     elseif 'if' == a0sym then
         local cond = EVAL(a1, env)
         if cond == types.Nil or cond == false then
-            if a3 then ast = a3 else return types.Nil end -- TCO
+            if #ast > 3 then ast = a3 else return types.Nil end -- TCO
         else
             ast = a2 -- TCO
         end
     elseif 'fn*' == a0sym then
         return types.MalFunc:new(function(...)
-            return EVAL(a2, Env:new(env, a1, arg))
+            return EVAL(a2, Env:new(env, a1, table.pack(...)))
         end, a2, env, a1)
     else
         local args = eval_ast(ast, env)
@@ -144,7 +145,7 @@ function EVAL(ast, env)
             ast = f.ast
             env = Env:new(f.env, f.params, args) -- TCO
         else
-            return f(unpack(args))
+            return f(table.unpack(args))
         end
     end
   end
@@ -172,11 +173,8 @@ repl_env:set(types.Symbol:new('*ARGV*'), types.List:new(types.slice(arg,2)))
 -- core.mal: defined using mal
 rep("(def! *host-language* \"lua\")")
 rep("(def! not (fn* (a) (if a false true)))")
-rep("(def! load-file (fn* (f) (eval (read-string (str \"(do \" (slurp f) \")\")))))")
+rep("(def! load-file (fn* (f) (eval (read-string (str \"(do \" (slurp f) \"\nnil)\")))))")
 rep("(defmacro! cond (fn* (& xs) (if (> (count xs) 0) (list 'if (first xs) (if (> (count xs) 1) (nth xs 1) (throw \"odd number of forms to cond\")) (cons 'cond (rest (rest xs)))))))")
-rep("(def! *gensym-counter* (atom 0))")
-rep("(def! gensym (fn* [] (symbol (str \"G__\" (swap! *gensym-counter* (fn* [x] (+ 1 x)))))))")
-rep("(defmacro! or (fn* (& xs) (if (empty? xs) nil (if (= 1 (count xs)) (first xs) (let* (condvar (gensym)) `(let* (~condvar ~(first xs)) (if ~condvar ~condvar (or ~@(rest xs)))))))))")
 
 function print_exception(exc)
     if exc then

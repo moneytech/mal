@@ -84,6 +84,9 @@ package body reader is
             tmppos := tmppos + 1;
           end if;
         end loop;
+        if tmppos > str'length then
+          tmppos := tmppos - 1; -- unterminated string, will be caught in unescape_string_token
+        end if;
         token := new string(1 to (tmppos - pos + 1));
         token(1 to (tmppos - pos + 1)) := str(pos to tmppos);
         next_start_pos := tmppos + 1;
@@ -187,11 +190,15 @@ package body reader is
         src_i := src_i + 1;
       end if;
     end loop;
-    result := new string'(s(1 to dst_i));
+    if src_i <= token'length then
+      result := new string'(s(1 to dst_i));
+    else
+      result := null;
+    end if;
     deallocate(s);
   end procedure unescape_string_token;
 
-  procedure read_atom(r: inout reader_class; result: out mal_val_ptr) is
+  procedure read_atom(r: inout reader_class; result: out mal_val_ptr; err: out mal_val_ptr) is
     variable token, s: line;
     variable num: integer;
     variable ch: character;
@@ -221,7 +228,17 @@ package body reader is
           s(1 to s'length) := token(2 to token'length);
           new_keyword(s, result);
         when '"' =>
+          if token(token'length) /= '"' then
+            new_string("expected '""', got EOF", err);
+            result := null;
+            return;
+          end if;
           unescape_string_token(token, s);
+          if s = null then
+            new_string("expected '""', got EOF", err);
+            result := null;
+            return;
+          end if;
           new_string(s, result);
         when others =>
           new_symbol(token, result);
@@ -328,7 +345,7 @@ package body reader is
       when ']' => new_string("unexcepted ']'", err);
       when '{' => read_sequence(mal_hashmap, "}", r, result, err);
       when '}' => new_string("unexcepted '}'", err);
-      when others => read_atom(r, result);
+      when others => read_atom(r, result, err);
     end case;
   end procedure read_form;
 

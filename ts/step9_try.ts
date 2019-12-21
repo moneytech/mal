@@ -121,6 +121,9 @@ function evalMal(ast: MalType, env: Env): MalType {
         if (ast.type !== Node.List) {
             return evalAST(ast, env);
         }
+        if (ast.list.length === 0) {
+            return ast;
+        }
 
         ast = macroexpand(ast, env);
         if (!isSeq(ast)) {
@@ -194,6 +197,9 @@ function evalMal(ast: MalType, env: Env): MalType {
                         try {
                             return evalMal(ast.list[1], env);
                         } catch (e) {
+                            if (ast.list.length < 3) {
+                                throw e;
+                            }
                             const catchBody = ast.list[2];
                             if (!isSeq(catchBody)) {
                                 throw new Error(`unexpected return type: ${catchBody.type}, expected: list or vector`);
@@ -293,9 +299,8 @@ replEnv.set(MalSymbol.get("*ARGV*"), new MalList([]));
 
 // core.mal: defined using the language itself
 rep("(def! not (fn* (a) (if a false true)))");
-rep(`(def! load-file (fn* (f) (eval (read-string (str "(do " (slurp f) ")")))))`);
+rep(`(def! load-file (fn* (f) (eval (read-string (str "(do " (slurp f) "\nnil)")))))`);
 rep(`(defmacro! cond (fn* (& xs) (if (> (count xs) 0) (list 'if (first xs) (if (> (count xs) 1) (nth xs 1) (throw "odd number of forms to cond")) (cons 'cond (rest (rest xs)))))))`);
-rep("(defmacro! or (fn* (& xs) (if (empty? xs) nil (if (= 1 (count xs)) (first xs) `(let* (or_FIXME ~(first xs)) (if or_FIXME or_FIXME (or ~@(rest xs))))))))");
 
 if (typeof process !== "undefined" && 2 < process.argv.length) {
     replEnv.set(MalSymbol.get("*ARGV*"), new MalList(process.argv.slice(3).map(s => new MalString(s))));
@@ -314,7 +319,11 @@ while (true) {
     try {
         console.log(rep(line));
     } catch (e) {
-        const err: Error = e;
-        console.error(err.message);
+        if (isAST(e)) {
+            console.error("Error:", prStr(e));
+        } else {
+            const err: Error = e;
+            console.error("Error:", err.message);
+        }
     }
 }

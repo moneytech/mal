@@ -79,7 +79,7 @@
                   (apply f args))))))))
 
 ;; print
-(defn PRINT [exp] (pr-str exp))
+(defn PRINT [exp] (printer/pr-str exp))
 
 ;; repl
 (def repl-env (env/env))
@@ -94,7 +94,7 @@
 
 ;; core.mal: defined using the language itself
 (rep "(def! not (fn* [a] (if a false true)))")
-(rep "(def! load-file (fn* [f] (eval (read-string (str \"(do \" (slurp f) \")\")))))")
+(rep "(def! load-file (fn* [f] (eval (read-string (str \"(do \" (slurp f) \"\nnil)\")))))")
 
 ;; repl loop
 (defn repl-loop []

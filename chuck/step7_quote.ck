@@ -17,10 +17,10 @@
 // @import reader.ck
 // @import printer.ck
 // @import env.ck
+// @import func.ck
 // @import types/MalSubr.ck
 // @import types/subr/*.ck
 // @import core.ck
-// @import func.ck
 
 fun MalObject READ(string input)
 {
@@ -341,15 +341,7 @@ repl_env.set("*ARGV*", MalList.create(MalArgv(args)));
 fun string errorMessage(MalObject m)
 {
     (m$MalError).value() @=> MalObject value;
-
-    if( value.type == "string" )
-    {
-        return Printer.pr_str(value, false);
-    }
-    else
-    {
-        return "exception: " + Printer.pr_str(value, true);
-    }
+    return "exception: " + Printer.pr_str(value, true);
 }
 
 fun string rep(string input)
@@ -371,7 +363,7 @@ fun string rep(string input)
 }
 
 rep("(def! not (fn* (a) (if a false true)))");
-rep("(def! load-file (fn* (f) (eval (read-string (str \"(do \" (slurp f) \")\")))))");
+rep("(def! load-file (fn* (f) (eval (read-string (str \"(do \" (slurp f) \"\nnil)\")))))");
 
 fun void main()
 {

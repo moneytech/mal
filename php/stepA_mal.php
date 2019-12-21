@@ -72,7 +72,6 @@ function eval_ast($ast, $env) {
 }
 
 function MAL_EVAL($ast, $env) {
-    $_SUPERGLOBALS = ["_SERVER", "_GET", "_POST", "_FILES", "_REQUEST", "_SESSION", "_ENV", "_COOKIE"];
     while (true) {
 
     #echo "MAL_EVAL: " . _pr_str($ast) . "\n";
@@ -124,7 +123,7 @@ function MAL_EVAL($ast, $env) {
         if ($a2[0]->value === "catch*") {
             try {
                 return MAL_EVAL($a1, $env);
-            } catch (Error $e) {
+            } catch (_Error $e) {
                 $catch_env = new Env($env, array($a2[1]),
                                             array($e->obj));
                 return MAL_EVAL($a2[2], $catch_env);
@@ -152,27 +151,8 @@ function MAL_EVAL($ast, $env) {
     case "fn*":
         return _function('MAL_EVAL', 'native',
                          $ast[2], $env, $ast[1]);
-    case "$":
-        $var = MAL_EVAL($ast[1], $env);
-        if (_symbol_Q($var)) {
-          $varname = $var->value;
-        } elseif (gettype($var) === "string") {
-          $varname = $var;
-        } else {
-          throw new Exception("$ arg unknown type: " . gettype($var));
-        }
-        if (in_array($varname, $_SUPERGLOBALS)) {
-            $val = $GLOBALS[$varname];
-        } else {
-            $val = ${$varname};
-        }
-        return _to_mal($val);
-    case "!":
-        $fn = $ast[1]->value;
-        $el = eval_ast($ast->slice(2), $env);
-        $args = _to_php($el);
-        $res = call_user_func_array($fn, $args);
-        return _to_mal($res);
+    case "to-native":
+        return _to_native($ast[1]->value, $env);
     default:
         $el = eval_ast($ast, $env);
         $f = $el[0];
@@ -219,19 +199,10 @@ $repl_env->set(_symbol('*ARGV*'), $_argv);
 // core.mal: defined using the language itself
 rep("(def! *host-language* \"php\")");
 rep("(def! not (fn* (a) (if a false true)))");
-rep("(def! load-file (fn* (f) (eval (read-string (str \"(do \" (slurp f) \")\")))))");
+rep("(def! load-file (fn* (f) (eval (read-string (str \"(do \" (slurp f) \"\nnil)\")))))");
 rep("(defmacro! cond (fn* (& xs) (if (> (count xs) 0) (list 'if (first xs) (if (> (count xs) 1) (nth xs 1) (throw \"odd number of forms to cond\")) (cons 'cond (rest (rest xs)))))))");
-rep("(def! *gensym-counter* (atom 0))");
-rep("(def! gensym (fn* [] (symbol (str \"G__\" (swap! *gensym-counter* (fn* [x] (+ 1 x)))))))");
-rep("(defmacro! or (fn* (& xs) (if (empty? xs) nil (if (= 1 (count xs)) (first xs) (let* (condvar (gensym)) `(let* (~condvar ~(first xs)) (if ~condvar ~condvar (or ~@(rest xs)))))))))");
 
-// if we're called in a webserver context, auto-resolve to mal file
-if (php_sapi_name() != "cli") {
-    $malfile = str_replace(".php", ".mal", $_SERVER['SCRIPT_FILENAME']);
-    rep('(load-file "' . $malfile . '")');
-    exit(0);
-}
-
+// run mal file
 if (count($argv) > 1) {
     rep('(load-file "' . $argv[1] . '")');
     exit(0);
@@ -248,6 +219,8 @@ do {
         }
     } catch (BlankException $e) {
         continue;
+    } catch (_Error $e) {
+        echo "Error: " . _pr_str($e->obj, True) . "\n";
     } catch (Exception $e) {
         echo "Error: " . $e->getMessage() . "\n";
         echo $e->getTraceAsString() . "\n";

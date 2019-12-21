@@ -38,17 +38,6 @@ defcore empty? drop @ empty? ;;
 defcore count drop @ mal-count ;;
 
 defcore = drop dup @ swap cell+ @ swap m= mal-bool ;;
-defcore not
-    drop @
-    dup mal-nil = if
-        drop mal-true
-    else
-        mal-false = if
-            mal-true
-        else
-            mal-false
-        endif
-    endif ;;
 
 : pr-str-multi ( readably? argv argc )
     ?dup 0= if drop 0 0
@@ -79,6 +68,13 @@ defcore str ( argv argc )
 
 defcore read-string drop @ unpack-str read-str ;;
 defcore slurp drop @ unpack-str slurp-file MalString. ;;
+
+create core-buff 128 allot
+defcore readline ( argv argc -- mal-string )
+    drop @ unpack-str type stdout flush-file drop
+    core-buff 128 stdin read-line throw
+    if core-buff swap MalString. else drop mal-nil endif ;;
+
 
 defcore cons ( argv[item,coll] argc )
     drop dup @ swap cell+ @ ( item coll )
@@ -218,6 +214,25 @@ defcore atom?    drop @ mal-type @ Atom       = mal-bool ;;
 defcore true?    drop @ mal-true  = mal-bool ;;
 defcore false?   drop @ mal-false = mal-bool ;;
 defcore nil?     drop @ mal-nil   = mal-bool ;;
+defcore number?  drop @ mal-type @ MalInt = mal-bool ;;
+defcore fn?
+    drop @
+    dup mal-type @ MalUserFn = if
+        MalUserFn/is-macro? @ if
+            mal-false
+        else
+            mal-true
+        endif
+    else
+        mal-type @ MalNativeFn = if
+            mal-true
+        else
+            mal-false
+        endif
+    endif ;;
+defcore macro?   drop @ dup mal-type @ MalUserFn =
+                        swap MalUserFn/is-macro? @
+                        and mal-bool ;;
 
 defcore sequential? drop @ sequential? ;;
 

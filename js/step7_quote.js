@@ -132,7 +132,7 @@ repl_env.set(types._symbol('*ARGV*'), []);
 
 // core.mal: defined using the language itself
 rep("(def! not (fn* (a) (if a false true)))");
-rep("(def! load-file (fn* (f) (eval (read-string (str \"(do \" (slurp f) \")\")))))");
+rep("(def! load-file (fn* (f) (eval (read-string (str \"(do \" (slurp f) \"\nnil)\")))))");
 
 if (typeof process !== 'undefined' && process.argv.length > 2) {
     repl_env.set(types._symbol('*ARGV*'), process.argv.slice(3));
@@ -149,9 +149,9 @@ if (typeof require !== 'undefined' && require.main === module) {
         try {
             if (line) { printer.println(rep(line)); }
         } catch (exc) {
-            if (exc instanceof reader.BlankException) { continue; }
-            if (exc.stack) { printer.println(exc.stack); }
-            else           { printer.println(exc); }
+            if (exc instanceof reader.BlankException) { continue }
+            if (exc instanceof Error) { console.warn(exc.stack) }
+            else { console.warn("Error: " + printer._pr_str(exc, true)) }
         }
     }
 }

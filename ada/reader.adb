@@ -138,20 +138,17 @@ package body Reader is
 
          when '"' => -- a string
 
-            -- Skip over "
-            J := J + 1;
-            while J <= Str_Len and then
-               (Element (Saved_Line, J) /= '"' or else
-                 Element (Saved_Line, J-1) = '\') loop
+            loop
+               if Str_Len <= J then
+                  raise String_Error;
+               end if;
                J := J + 1;
+               exit when Element (Saved_Line, J) = '"';
+               if Element (Saved_Line, J) = '\' then
+                  J := J + 1;
+               end if;
             end loop;
 
-            -- So we either ran out of string..
-            if J > Str_Len then
-               raise String_Error;
-            end if;
-
-            -- or we reached an unescaped "
             Res := (ID => Str_Tok, Start_Char => I, Stop_Char => J);
             Char_To_Read := J + 1;
 
@@ -254,7 +251,7 @@ package body Reader is
          loop
 
             if Is_Null (MTA) then
-               return New_Error_Mal_Type (Str => "expected '" & Close & "'");
+               return New_Error_Mal_Type (Str => "expected '" & Close & "', got EOF");
             end if;
 
             exit when Deref (MTA).Sym_Type = Sym and then
@@ -386,7 +383,7 @@ package body Reader is
 
    exception
       when String_Error =>
-        return New_Error_Mal_Type (Str => "expected '""'");
+        return New_Error_Mal_Type (Str => "expected '""', got EOF");
    end Read_Str;
    
 

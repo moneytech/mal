@@ -105,9 +105,8 @@ repl_env.set types._symbol('*ARGV*'), []
 
 # core.mal: defined using the language itself
 rep("(def! not (fn* (a) (if a false true)))");
-rep("(def! load-file (fn* (f) (eval (read-string (str \"(do \" (slurp f) \")\")))))");
+rep("(def! load-file (fn* (f) (eval (read-string (str \"(do \" (slurp f) \"\nnil)\")))))");
 rep("(defmacro! cond (fn* (& xs) (if (> (count xs) 0) (list 'if (first xs) (if (> (count xs) 1) (nth xs 1) (throw \"odd number of forms to cond\")) (cons 'cond (rest (rest xs)))))))")
-rep("(defmacro! or (fn* (& xs) (if (empty? xs) nil (if (= 1 (count xs)) (first xs) `(let* (or_FIXME ~(first xs)) (if or_FIXME or_FIXME (or ~@(rest xs))))))))")
 
 if process? && process.argv.length > 2
   repl_env.set types._symbol('*ARGV*'), process.argv[3..]
@@ -123,7 +122,7 @@ while (line = readline.readline("user> ")) != null
     continue if exc instanceof reader.BlankException
     if exc.stack? and exc.stack.length > 2000
       console.log exc.stack.slice(0,1000) + "\n  ..." + exc.stack.slice(-1000)
-    else if exc.stack? console.log exc.stack
-    else               console.log exc
+    else if exc.stack? then console.log exc.stack
+    else                    console.log exc
 
 # vim: ts=2:sw=2

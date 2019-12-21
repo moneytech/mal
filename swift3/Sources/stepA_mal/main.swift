@@ -249,11 +249,8 @@ try repl_env.set(MalVal.MalSymbol("*ARGV*"), list(Array(args)))
 // core.mal: defined using the language itself
 try rep("(def! *host-language* \"swift\")")
 try rep("(def! not (fn* (a) (if a false true)))")
-try rep("(def! load-file (fn* (f) (eval (read-string (str \"(do \" (slurp f) \")\")))))")
+try rep("(def! load-file (fn* (f) (eval (read-string (str \"(do \" (slurp f) \"\nnil)\")))))")
 try rep("(defmacro! cond (fn* (& xs) (if (> (count xs) 0) (list 'if (first xs) (if (> (count xs) 1) (nth xs 1) (throw \"odd number of forms to cond\")) (cons 'cond (rest (rest xs)))))))")
-try rep("(def! *gensym-counter* (atom 0))")
-try rep("(def! gensym (fn* [] (symbol (str \"G__\" (swap! *gensym-counter* (fn* [x] (+ 1 x)))))))")
-try rep("(defmacro! or (fn* (& xs) (if (empty? xs) nil (if (= 1 (count xs)) (first xs) (let* (condvar (gensym)) `(let* (~condvar ~(first xs)) (if ~condvar ~condvar (or ~@(rest xs)))))))))")
 
 
 if CommandLine.arguments.count > 1 {
@@ -273,5 +270,7 @@ while true {
         print("Error: \(msg)")
     } catch (MalError.General(let msg)) {
         print("Error: \(msg)")
+    } catch (MalError.MalException(let obj)) {
+        print("Error: \(pr_str(obj, true))")
     }
 }

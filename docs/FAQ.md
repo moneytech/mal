@@ -44,9 +44,8 @@ those files tend to be very small or non-existent. Examples:
 
 * the mal implementation has no types, reader, printer files and
   has a trivial core file (just to hoist underlying functions)
-* the Clojure implementation has no types file and fairly trivial
-  reader and printer files (just to modify the Clojure reader/writer
-  slightly) and a fairly trivial core file
+* the Clojure implementation has no types file and a fairly trivial
+  core file
 * ruby types and the functions that operate on them are very "Lispy"
   so the Ruby types file and core file are very small.
 
@@ -101,7 +100,7 @@ functionality goes into which step:
   a scientific fact that many small rewards are more motivating than
   a single large reward (citation intentionally omitted, get a small
   reward by googling it yourself). Each step in mal adds new
-  functionality that can actually be exercised by the implementor and,
+  functionality that can actually be exercised by the implementer and,
   just as importantly, easily tested.
 
 Also, the step structure of mal/make-a-lisp is not perfect. It never
@@ -124,16 +123,6 @@ programming language.
 Here are a few guidelines for getting your implementation accepted
 into the main repository:
 
-* Your implementation needs to be complete enough to self-host. This
-  means that all the mandatory tests should pass in both direct and
-  self-hosted modes:
-  ```bash
-  make "test^[IMPL_NAME]"
-  make MAL_IMPL=[IMPL_NAME] "test^mal"
-  ```
-  You do not need to pass the final optional tests for stepA that are
-  marked as optional and not needed for self-hosting.
-
 * Your implementation should follow the existing mal steps and
   structure: Lisp-centric code (eval, eval_ast, quasiquote,
   macroexpand) in the step files, other code in reader, printer, env,
@@ -152,20 +141,47 @@ into the main repository:
   welcome). However, if it is clear to me that your implementation is
   not idiomatic in a given language then I will probably ask you to
   improve it first.
-   
+
+* Your implementation needs to be complete enough to self-host. This
+  means that all the mandatory tests should pass in both direct and
+  self-hosted modes:
+  ```bash
+  make "test^[IMPL_NAME]"
+  make MAL_IMPL=[IMPL_NAME] "test^mal"
+  ```
+  You do not need to pass the final optional tests for stepA that are
+  marked as optional and not needed for self-hosting (except for the
+  `time-ms` function which is needed to run the micro-benchmark tests).
+
+* Create a `Dockerfile` in your directory that installs all the
+  packages necessary to build and run your implementation. Refer to other
+  implementations for examples of what the Dockerfile should contain.
+  Build your docker image and tag it `kanaka/mal-test-[IMPL_NAME]`.
+  The top-level Makefile has support for building/testing within
+  docker with the `DOCKERIZE` flag:
+  ```bash
+  make DOCKERIZE=1 "test^[IMPL_NAME]"
+  make DOCKERIZE=1 MAL_IMPL=[IMPL_NAME] "test^mal"
+  ```
+
+* Make sure the Travis build and test scripts pass locally:
+  ```bash
+  IMPL=[IMPL_NAME] ./.travis_build.sh
+  ./.travis_test.sh test [IMPL_NAME]
+  ```
+
 * If you are creating a new implementation for an existing
   implementation (or somebody beats you to the punch while you are
   working on it), there is still a chance I will merge your
   implementation. If you can make a compelling argument that your
-  implementation is more idiomatic or significantly better than the
-  existing implementation then I may replace the existing one.
-  However, if your approach is different or unique from the existing
-  implementation, there is still a good chance I will merge your
-  implementation side-by-side with the existing one. In that case
-  I will add your github username as a suffix to the language
-  implementation directory. At the very least, even if I decide not to
-  merge your implementation, I am certainly willing to link to you
-  implementation once it is completed.
+  implementation is more idiomatic or significantly better in some way
+  than the existing implementation then I may replace the existing
+  one. However, if your approach is different or unique from the
+  existing implementation, there is still a good chance I will merge
+  your implementation side-by-side with the existing one. At the very
+  least, even if I decide not to merge your implementation, I am
+  certainly willing to link to you implementation once it is
+  completed.
 
 * You do not need to implement line editing (i.e. readline)
   functionality for your implementation, however, it is a nice
@@ -173,8 +189,17 @@ into the main repository:
   it saves a lot of time when I am creating a new implementation to
   have line edit support early in the process.
 
----
-
-**Good questions that either don't have answer or need more detail**
-
 ### Why do some mal forms end in "\*" or "!" (swap!, def!, let\*, etc)?
+
+The forms that end in a bang mutate something:
+* **def!** mutates the current environment
+* **swap!** and **reset!** mutate an atom to refer to a new value
+
+The forms that end in a star are similar to similar Clojure forms but
+are more limited in functionality:
+* **fn\*** does not do parameter destructuring and only supports
+  a single body form.
+* **let\*** does not do parameter destructuring
+* **try\*** and **catch\*** do not support type matching of
+  exceptions
+

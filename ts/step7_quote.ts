@@ -1,6 +1,6 @@
 import { readline } from "./node_readline";
 
-import { Node, MalType, MalString, MalNil, MalList, MalVector, MalHashMap, MalSymbol, MalFunction, isSeq } from "./types";
+import { Node, MalType, MalString, MalNil, MalList, MalVector, MalHashMap, MalSymbol, MalFunction, isAST, isSeq } from "./types";
 import { Env } from "./env";
 import * as core from "./core";
 import { readStr } from "./reader";
@@ -207,7 +207,7 @@ replEnv.set(MalSymbol.get("*ARGV*"), new MalList([]));
 
 // core.mal: defined using the language itself
 rep("(def! not (fn* (a) (if a false true)))");
-rep(`(def! load-file (fn* (f) (eval (read-string (str "(do " (slurp f) ")")))))`);
+rep(`(def! load-file (fn* (f) (eval (read-string (str "(do " (slurp f) "\nnil)")))))`);
 
 if (typeof process !== "undefined" && 2 < process.argv.length) {
     replEnv.set(MalSymbol.get("*ARGV*"), new MalList(process.argv.slice(3).map(s => new MalString(s))));
@@ -226,7 +226,11 @@ while (true) {
     try {
         console.log(rep(line));
     } catch (e) {
-        const err: Error = e;
-        console.error(err.message);
+        if (isAST(e)) {
+            console.error("Error:", prStr(e));
+        } else {
+            const err: Error = e;
+            console.error("Error:", err.message);
+        }
     }
 }

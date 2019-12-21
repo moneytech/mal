@@ -16,7 +16,7 @@ proc quasiquote(ast: MalType): MalType =
   else:
     return list(symbol "cons", quasiquote(ast.list[0]), quasiquote(list(ast.list[1 .. ^1])))
 
-proc eval(ast: MalType, env: var Env): MalType
+proc eval(ast: MalType, env: Env): MalType
 
 proc eval_ast(ast: MalType, env: var Env): MalType =
   case ast.kind
@@ -33,8 +33,9 @@ proc eval_ast(ast: MalType, env: var Env): MalType =
   else:
     result = ast
 
-proc eval(ast: MalType, env: var Env): MalType =
+proc eval(ast: MalType, env: Env): MalType =
   var ast = ast
+  var env = env
 
   template defaultApply =
     let el = ast.eval_ast(env)
@@ -64,7 +65,7 @@ proc eval(ast: MalType, env: var Env): MalType =
         let
           a1 = ast.list[1]
           a2 = ast.list[2]
-        var let_env = env
+        var let_env = initEnv(env)
         case a1.kind
         of List, Vector:
           for i in countup(0, a1.list.high, 2):
@@ -131,7 +132,7 @@ proc rep(str: string): string {.discardable.} =
 
 # core.mal: defined using mal itself
 rep "(def! not (fn* (a) (if a false true)))"
-rep "(def! load-file (fn* (f) (eval (read-string (str \"(do \" (slurp f) \")\")))))"
+rep "(def! load-file (fn* (f) (eval (read-string (str \"(do \" (slurp f) \"\nnil)\")))))"
 
 if paramCount() >= 1:
   rep "(load-file \"" & paramStr(1) & "\")"

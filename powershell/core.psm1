@@ -103,16 +103,20 @@ $core_ns = @{
     "nil?"        = { param($a); $a -eq $null };
     "true?"       = { param($a); $a -eq $true };
     "false?"      = { param($a); $a -eq $false };
+    "number?"     = { param($a); $a -is [int32] };
     "string?"     = { param($a); string? $a };
     "symbol"      = Get-Command new-symbol;
     "symbol?"     = { param($a); symbol? $a };
     "keyword"     = Get-Command new-keyword;
     "keyword?"    = { param($a); keyword? $a };
+    "fn?"         = { param($a); (fn? $a) -or ((malfunc? $a) -and
+                                               (-not $a.macro)) };
+    "macro?"      = { param($a); (malfunc? $a) -and $a.macro };
 
     "pr-str"      = { pr_seq $args $true  " " };
     "str"         = { pr_seq $args $false "" };
-    "prn"         = { Write-Host (pr_seq $args $true  " ") };
-    "println"     = { Write-Host (pr_seq $args $false " ") };
+    "prn"         = { Write-Host (pr_seq $args $true  " "); $null };
+    "println"     = { Write-Host (pr_seq $args $false " "); $null };
     "read-string" = { read_str $args[0] };
     "readline"    = { Write-Host $args[0] -NoNewline; [Console]::Readline() };
     "slurp"       = { Get-Content -Path $args[0] -Raw };

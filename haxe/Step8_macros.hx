@@ -1,6 +1,7 @@
 import Compat;
 import types.Types.MalType;
 import types.Types.*;
+import types.MalException;
 import reader.*;
 import printer.*;
 import env.*;
@@ -189,9 +190,8 @@ class Step8_macros {
 
         // core.mal: defined using the language itself
         rep("(def! not (fn* (a) (if a false true)))");
-        rep("(def! load-file (fn* (f) (eval (read-string (str \"(do \" (slurp f) \")\")))))");
+        rep("(def! load-file (fn* (f) (eval (read-string (str \"(do \" (slurp f) \"\nnil)\")))))");
         rep("(defmacro! cond (fn* (& xs) (if (> (count xs) 0) (list 'if (first xs) (if (> (count xs) 1) (nth xs 1) (throw \"odd number of forms to cond\")) (cons 'cond (rest (rest xs)))))))");
-        rep("(defmacro! or (fn* (& xs) (if (empty? xs) nil (if (= 1 (count xs)) (first xs) `(let* (or_FIXME ~(first xs)) (if or_FIXME or_FIXME (or ~@(rest xs))))))))");
 
 
         if (cmdargs.length > 0) {
@@ -209,7 +209,11 @@ class Step8_macros {
             } catch (exc:haxe.io.Eof) {
                 Compat.exit(0);
             } catch (exc:Dynamic) {
-                Compat.println(exc);
+                if (Type.getClass(exc) == MalException) {
+                    Compat.println("Error: " + Printer.pr_str(exc.obj, true));
+                } else {
+                    Compat.println("Error: " + exc);
+                };
             }
         }
     }

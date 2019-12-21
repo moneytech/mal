@@ -3,7 +3,7 @@ uname_S := $(shell sh -c 'uname -s 2>/dev/null || echo not')
 ifeq ($(uname_S),Darwin)
 	# Native build on yosemite. Requires: brew install readline
 	CXX=g++
-	READLINE=/usr/local/Cellar/readline/6.3.8
+	READLINE=/usr/local/opt/readline
 	INCPATHS=-I$(READLINE)/include
 	LIBPATHS=-L$(READLINE)/lib
 else
@@ -52,16 +52,3 @@ clean:
 	rm -rf *.o $(TARGETS) libmal.a .deps mal
 
 -include .deps
-
-
-### Stats
-
-.PHONY: stats stats-lisp
-
-stats: $(LIBSOURCES) stepA_mal.cpp
-	@wc $^
-	@printf "%5s %5s %5s %s\n" `grep -E "^[[:space:]]*//|^[[:space:]]*$$" $^ | wc` "[comments/blanks]"
-
-stats-lisp: Core.cpp Environment.cpp stepA_mal.cpp
-	@wc $^
-	@printf "%5s %5s %5s %s\n" `grep -E "^[[:space:]]*//|^[[:space:]]*$$" $^ | wc` "[comments/blanks]"

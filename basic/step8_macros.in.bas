@@ -529,7 +529,7 @@ MAIN:
   A$="(def! not (fn* (a) (if a false true)))"
   GOSUB RE:AY=R:GOSUB RELEASE
 
-  A$="(def! load-file (fn* (f) (eval (read-file f))))"
+  A$="(def! load-file (fn* (f) (do (eval (read-file f)) nil)))"
   GOSUB RE:AY=R:GOSUB RELEASE
 
   A$="(defmacro! cond (fn* (& xs) (if (> (count xs) 0) (list 'if (first xs)"
@@ -537,12 +537,8 @@ MAIN:
   A$=A$+" forms to cond"+CHR$(34)+")) (cons 'cond (rest (rest xs)))))))"
   GOSUB RE:AY=R:GOSUB RELEASE
 
-  A$="(defmacro! or (fn* (& xs) (if (empty? xs) nil (if (= 1 (count xs)) (first xs)"
-  A$=A$+" `(let* (or_FIXME ~(first xs)) (if or_FIXME or_FIXME (or ~@(rest xs))))))))"
-  GOSUB RE:AY=R:GOSUB RELEASE
-
   REM load the args file
-  A$="(def! -*ARGS*- (load-file "+CHR$(34)+".args.mal"+CHR$(34)+"))"
+  A$="(load-file "+CHR$(34)+".args.mal"+CHR$(34)+")"
   GOSUB RE:AY=R:GOSUB RELEASE
 
   IF ER>-2 THEN GOSUB PRINT_ERROR:END
@@ -582,7 +578,8 @@ MAIN:
 
   QUIT:
     REM GOSUB PR_MEMORY_SUMMARY_SMALL
-    END
+    #cbm END
+    #qbasic SYSTEM
 
   PRINT_ERROR:
     PRINT "Error: "+E$

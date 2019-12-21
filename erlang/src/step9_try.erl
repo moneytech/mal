@@ -18,9 +18,8 @@ main([]) ->
 init() ->
     Env = core:ns(),
     eval(read("(def! not (fn* (a) (if a false true)))"), Env),
-    eval(read("(def! load-file (fn* (f) (eval (read-string (str \"(do \" (slurp f) \")\")))))"), Env),
+    eval(read("(def! load-file (fn* (f) (eval (read-string (str \"(do \" (slurp f) \"\nnil)\")))))"), Env),
     eval(read("(defmacro! cond (fn* (& xs) (if (> (count xs) 0) (list 'if (first xs) (if (> (count xs) 1) (nth xs 1) (throw \"odd number of forms to cond\")) (cons 'cond (rest (rest xs)))))))"), Env),
-    eval(read("(defmacro! or (fn* (& xs) (if (empty? xs) nil (if (= 1 (count xs)) (first xs) `(let* (or_FIXME \~(first xs)) (if or_FIXME or_FIXME (or \~@(rest xs))))))))"), Env),
     Env.
 
 loop(Env) ->
@@ -37,7 +36,8 @@ rep(Input, Env) ->
         none -> none;
         Result -> printer:pr_str(Result, true)
     catch
-        error:Reason -> printer:pr_str({error, Reason}, true)
+        error:Reason -> printer:pr_str({error, Reason}, true);
+        throw:Reason -> printer:pr_str({error, printer:pr_str(Reason, true)}, true)
     end.
 
 read(Input) ->
@@ -141,6 +141,8 @@ eval_list({list, [{symbol, "try*"}, A, {list, [{symbol, "catch*"}, B, C], _M1}],
             env:bind(NewEnv, [B], [Reason]),
             eval(C, NewEnv)
     end;
+eval_list({list, [{symbol, "try*"}, AST], _Meta}, Env) ->
+    eval(AST, Env);
 eval_list({list, [{symbol, "try*"}|_], _Meta}, _Env) ->
     error("try*/catch* must be of the form (try* A (catch* B C))");
 eval_list({list, List, Meta}, Env) ->

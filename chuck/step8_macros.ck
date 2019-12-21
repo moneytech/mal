@@ -17,10 +17,10 @@
 // @import reader.ck
 // @import printer.ck
 // @import env.ck
+// @import func.ck
 // @import types/MalSubr.ck
 // @import types/subr/*.ck
 // @import core.ck
-// @import func.ck
 
 fun MalObject READ(string input)
 {
@@ -412,15 +412,7 @@ repl_env.set("*ARGV*", MalList.create(MalArgv(args)));
 fun string errorMessage(MalObject m)
 {
     (m$MalError).value() @=> MalObject value;
-
-    if( value.type == "string" )
-    {
-        return Printer.pr_str(value, false);
-    }
-    else
-    {
-        return "exception: " + Printer.pr_str(value, true);
-    }
+    return "exception: " + Printer.pr_str(value, true);
 }
 
 fun string rep(string input)
@@ -442,10 +434,8 @@ fun string rep(string input)
 }
 
 rep("(def! not (fn* (a) (if a false true)))");
-rep("(def! load-file (fn* (f) (eval (read-string (str \"(do \" (slurp f) \")\")))))");
-
+rep("(def! load-file (fn* (f) (eval (read-string (str \"(do \" (slurp f) \"\nnil)\")))))");
 rep("(defmacro! cond (fn* (& xs) (if (> (count xs) 0) (list 'if (first xs) (if (> (count xs) 1) (nth xs 1) (throw \"odd number of forms to cond\")) (cons 'cond (rest (rest xs)))))))");
-rep("(defmacro! or (fn* (& xs) (if (empty? xs) nil (if (= 1 (count xs)) (first xs) `(let* (or_FIXME ~(first xs)) (if or_FIXME or_FIXME (or ~@(rest xs))))))))");
 
 fun void main()
 {

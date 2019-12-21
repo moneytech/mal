@@ -162,9 +162,6 @@ MalVal *EVAL(MalVal *ast, Env *env) {
 // print
 char *PRINT(MalVal *exp) {
     if (mal_error) {
-        fprintf(stderr, "Error: %s\n", mal_error->val.string);
-        malval_free(mal_error);
-        mal_error = NULL;
         return NULL;
     }
     return _pr_str(exp,1);
@@ -213,7 +210,7 @@ void init_repl_env(int argc, char *argv[]) {
     // core.mal: defined using the language itself
     RE(repl_env, "", "(def! not (fn* (a) (if a false true)))");
     RE(repl_env, "",
-       "(def! load-file (fn* (f) (eval (read-string (str \"(do \" (slurp f) \")\")))))");
+       "(def! load-file (fn* (f) (eval (read-string (str \"(do \" (slurp f) \"\nnil)\")))))");
 }
 
 int main(int argc, char *argv[])
@@ -227,7 +224,7 @@ int main(int argc, char *argv[])
     // Set the initial prompt and environment
     snprintf(prompt, sizeof(prompt), "user> ");
     init_repl_env(argc, argv);
- 
+
     if (argc > 1) {
         char *cmd = g_strdup_printf("(load-file \"%s\")", argv[1]);
         RE(repl_env, "", cmd);
@@ -242,7 +239,11 @@ int main(int argc, char *argv[])
         }
         output = PRINT(exp);
 
-        if (output) { 
+        if (mal_error) {
+            fprintf(stderr, "Error: %s\n", _pr_str(mal_error,1));
+            malval_free(mal_error);
+            mal_error = NULL;
+        } else if (output) {
             puts(output);
             MAL_GC_FREE(output);        // Free output string
         }

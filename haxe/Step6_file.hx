@@ -1,6 +1,7 @@
 import Compat;
 import types.Types.MalType;
 import types.Types.*;
+import types.MalException;
 import reader.*;
 import printer.*;
 import env.*;
@@ -120,7 +121,7 @@ class Step6_file {
 
         // core.mal: defined using the language itself
         rep("(def! not (fn* (a) (if a false true)))");
-        rep("(def! load-file (fn* (f) (eval (read-string (str \"(do \" (slurp f) \")\")))))");
+        rep("(def! load-file (fn* (f) (eval (read-string (str \"(do \" (slurp f) \"\nnil)\")))))");
 
         if (cmdargs.length > 0) {
             rep('(load-file "${cmdargs[0]}")');
@@ -137,7 +138,11 @@ class Step6_file {
             } catch (exc:haxe.io.Eof) {
                 Compat.exit(0);
             } catch (exc:Dynamic) {
-                Compat.println(exc);
+                if (Type.getClass(exc) == MalException) {
+                    Compat.println("Error: " + Printer.pr_str(exc.obj, true));
+                } else {
+                    Compat.println("Error: " + exc);
+                };
             }
         }
     }

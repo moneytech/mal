@@ -126,6 +126,7 @@ object step9_try {
           return EVAL(a1, env)
         } catch {
           case t: Throwable => {
+            if (rest.length == 0) throw t
             rest(0).asInstanceOf[MalList].value match {
               case List(Symbol("catch*"), a21, a22) => {
                 val exc: Any = t match {
@@ -204,9 +205,8 @@ object step9_try {
 
     // core.mal: defined using the language itself
     REP("(def! not (fn* (a) (if a false true)))")
-    REP("(def! load-file (fn* (f) (eval (read-string (str \"(do \" (slurp f) \")\")))))")
+    REP("(def! load-file (fn* (f) (eval (read-string (str \"(do \" (slurp f) \"\nnil)\")))))")
     REP("(defmacro! cond (fn* (& xs) (if (> (count xs) 0) (list 'if (first xs) (if (> (count xs) 1) (nth xs 1) (throw \"odd number of forms to cond\")) (cons 'cond (rest (rest xs)))))))")
-    REP("(defmacro! or (fn* (& xs) (if (empty? xs) nil (if (= 1 (count xs)) (first xs) `(let* (or_FIXME ~(first xs)) (if or_FIXME or_FIXME (or ~@(rest xs))))))))")
 
 
     if (args.length > 0) {

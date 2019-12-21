@@ -127,7 +127,7 @@ try repl_env.set(MalVal.MalSymbol("*ARGV*"), list(Array(args)))
 
 // core.mal: defined using the language itself
 try rep("(def! not (fn* (a) (if a false true)))")
-try rep("(def! load-file (fn* (f) (eval (read-string (str \"(do \" (slurp f) \")\")))))")
+try rep("(def! load-file (fn* (f) (eval (read-string (str \"(do \" (slurp f) \"\nnil)\")))))")
 
 
 if CommandLine.arguments.count > 1 {
@@ -147,5 +147,7 @@ while true {
         print("Error: \(msg)")
     } catch (MalError.General(let msg)) {
         print("Error: \(msg)")
+    } catch (MalError.MalException(let obj)) {
+        print("Error: \(pr_str(obj, true))")
     }
 }

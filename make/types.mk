@@ -70,7 +70,7 @@ _visualize_memory = $(foreach var,$(sort $(foreach vv,$(filter $(__obj_magic)_%,
 
 # Errors/Exceptions
 __ERROR :=
-_error = $(eval __ERROR := $(call _string,$(1)))
+_error = $(strip $(eval __ERROR := $(call _string,$(1))))
 
 
 # Constant atomic values

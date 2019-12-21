@@ -98,7 +98,7 @@ repl_env.set(new MalSymbol("*ARGV*"), this.args as List)
 
 // core.mal: defined using mal itself
 REP("(def! not (fn* (a) (if a false true)))")
-REP("(def! load-file (fn* (f) (eval (read-string (str \"(do \" (slurp f) \")\")))))")
+REP("(def! load-file (fn* (f) (eval (read-string (str \"(do \" (slurp f) \"\nnil)\")))))")
 
 if (this.args.size() > 0) {
     repl_env.set(new MalSymbol("*ARGV*"), this.args.drop(1) as List)
@@ -114,7 +114,7 @@ while (true) {
     try {
         println REP(line)
     } catch(MalException ex) {
-        println "Error: ${ex.message}"
+        println "Error: ${printer.pr_str(ex.obj, true)}"
     } catch(StackOverflowError ex) {
         println "Error: ${ex}"
     } catch(ex) {

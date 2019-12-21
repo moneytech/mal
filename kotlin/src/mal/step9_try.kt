@@ -142,18 +142,19 @@ private fun defmacro(ast: MalList, env: Env): MalType {
 }
 
 private fun try_catch(ast: MalList, env: Env): MalType =
-        try {
-            eval(ast.nth(1), env)
-        } catch (e: Exception) {
-            val thrown = if (e is MalException) e else MalException(e.message)
-            val symbol = (ast.nth(2) as MalList).nth(1) as MalSymbol
+    try {
+        eval(ast.nth(1), env)
+    } catch (e: Exception) {
+        if (ast.count() < 3) { throw e }
+        val thrown = if (e is MalException) e else MalException(e.message)
+        val symbol = (ast.nth(2) as MalList).nth(1) as MalSymbol
 
-            val catchBody = (ast.nth(2) as MalList).nth(2)
-            val catchEnv = Env(env)
-            catchEnv.set(symbol, thrown)
+        val catchBody = (ast.nth(2) as MalList).nth(2)
+        val catchEnv = Env(env)
+        catchEnv.set(symbol, thrown)
 
-            eval(catchBody, catchEnv)
-        }
+        eval(catchBody, catchEnv)
+    }
 
 fun print(result: MalType) = pr_str(result, print_readably = true)
 
@@ -168,9 +169,8 @@ fun main(args: Array<String>) {
     repl_env.set(MalSymbol("eval"), MalFunction({ a: ISeq -> eval(a.first(), repl_env) }))
 
     rep("(def! not (fn* (a) (if a false true)))", repl_env)
-    rep("(def! load-file (fn* (f) (eval (read-string (str \"(do \" (slurp f) \")\")))))", repl_env)
+    rep("(def! load-file (fn* (f) (eval (read-string (str \"(do \" (slurp f) \"\nnil)\")))))", repl_env)
     rep("(defmacro! cond (fn* (& xs) (if (> (count xs) 0) (list 'if (first xs) (if (> (count xs) 1) (nth xs 1) (throw \"odd number of forms to cond\")) (cons 'cond (rest (rest xs)))))))", repl_env)
-    rep("(defmacro! or (fn* (& xs) (if (empty? xs) nil (if (= 1 (count xs)) (first xs) `(let* (or_FIXME ~(first xs)) (if or_FIXME or_FIXME (or ~@(rest xs))))))))", repl_env)
 
     if (args.any()) {
         rep("(load-file \"${args[0]}\")", repl_env)

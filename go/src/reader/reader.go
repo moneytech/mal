@@ -42,7 +42,7 @@ func tokenize(str string) []string {
 	results := make([]string, 0, 1)
 	// Work around lack of quoting in backtick
 	re := regexp.MustCompile(`[\s,]*(~@|[\[\]{}()'` + "`" +
-		`~^@]|"(?:\\.|[^\\"])*"|;.*|[^\s\[\]{}('"` + "`" +
+		`~^@]|"(?:\\.|[^\\"])*"?|;.*|[^\s\[\]{}('"` + "`" +
 		`,;)]*)`)
 	for _, group := range re.FindAllStringSubmatch(str, -1) {
 		if (group[1] == "") || (group[1][0] == ';') {
@@ -65,13 +65,18 @@ func read_atom(rdr Reader) (MalType, error) {
 			return nil, errors.New("number parse error")
 		}
 		return i, nil
-	} else if (*token)[0] == '"' {
+	} else if match, _ :=
+		  regexp.MatchString(`^"(?:\\.|[^\\"])*"$`, *token); match {
 		str := (*token)[1 : len(*token)-1]
 		return strings.Replace(
 			strings.Replace(
-			 strings.Replace(str, `\"`, `"`, -1),
+			 strings.Replace(
+			  strings.Replace(str, `\\`, "\u029e", -1),
+			  `\"`, `"`, -1),
 			 `\n`, "\n", -1),
-			`\\`, "\\", -1), nil
+			"\u029e", "\\", -1), nil
+	} else if (*token)[0] == '"' {
+		return nil, errors.New("expected '\"', got EOF")
 	} else if (*token)[0] == ':' {
 		return NewKeyword((*token)[1:len(*token)])
 	} else if *token == "nil" {

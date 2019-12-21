@@ -233,13 +233,9 @@ static malValuePtr quasiquote(malValuePtr obj)
 }
 
 static const char* malFunctionTable[] = {
-    "(def! list (fn* (& items) items))",
     "(def! not (fn* (cond) (if cond false true)))",
-    "(def! >= (fn* (a b) (<= b a)))",
-    "(def! < (fn* (a b) (not (<= b a))))",
-    "(def! > (fn* (a b) (not (<= a b))))",
     "(def! load-file (fn* (filename) \
-        (eval (read-string (str \"(do \" (slurp filename) \")\")))))",
+        (eval (read-string (str \"(do \" (slurp filename) \"\nnil)\")))))",
 };
 
 static void installFunctions(malEnvPtr env) {

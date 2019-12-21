@@ -88,10 +88,11 @@ EVAL := method(ast, env,
                     ast = quasiquote(ast at(1))
                     continue, // TCO
                 "defmacro!",
-                    return(env set(ast at(1), EVAL(ast at(2), env) setIsMacro(true))),
+                    return(env set(ast at(1), EVAL(ast at(2), env) clone setIsMacro(true))),
                 "macroexpand",
                     return(macroexpand(ast at(1), env)),
                 "try*",
+                    if(ast at(2) == nil, return(EVAL(ast at(1), env)))
                     e := try(result := EVAL(ast at(1), env))
                     e catch(Exception,
                         exc := if(e type == "MalException", e val, e error)
@@ -135,11 +136,8 @@ repl_env set(MalSymbol with("*ARGV*"), MalList with(System args slice(2)))
 // core.mal: defined using the language itself
 RE("(def! *host-language* \"io\")")
 RE("(def! not (fn* (a) (if a false true)))")
-RE("(def! load-file (fn* (f) (eval (read-string (str \"(do \" (slurp f) \")\")))))")
+RE("(def! load-file (fn* (f) (eval (read-string (str \"(do \" (slurp f) \"\nnil)\")))))")
 RE("(defmacro! cond (fn* (& xs) (if (> (count xs) 0) (list 'if (first xs) (if (> (count xs) 1) (nth xs 1) (throw \"odd number of forms to cond\")) (cons 'cond (rest (rest xs)))))))")
-RE("(def! *gensym-counter* (atom 0))")
-RE("(def! gensym (fn* [] (symbol (str \"G__\" (swap! *gensym-counter* (fn* [x] (+ 1 x)))))))")
-RE("(defmacro! or (fn* (& xs) (if (empty? xs) nil (if (= 1 (count xs)) (first xs) (let* (condvar (gensym)) `(let* (~condvar ~(first xs)) (if ~condvar ~condvar (or ~@(rest xs)))))))))")
 
 if(System args size > 1,
     REP("(load-file \"" .. (System args at(1)) .. "\")")
@@ -153,6 +151,9 @@ loop(
     if(line isEmpty, continue)
     e := try(REP(line) println)
     e catch(Exception,
-        ("Error: " .. (e error)) println
+        if(e type == "MalException",
+            ("Error: " .. ((e val) malPrint(true))) println,
+            ("Error: " .. (e error)) println
+        )
     )
 )

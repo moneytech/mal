@@ -27,7 +27,7 @@ defmodule Mix.Tasks.Step8Macros do
     read_eval_print("""
       (def! load-file
         (fn* (f)
-          (eval (read-string (str "(do " (slurp f) ")")))))
+          (eval (read-string (str "(do " (slurp f) "\nnil)")))))
       """, env)
 
     # cond
@@ -40,17 +40,6 @@ defmodule Mix.Tasks.Step8Macros do
                 (nth xs 1)
                 (throw \"odd number of forms to cond\"))
               (cons 'cond (rest (rest xs)))))))"
-      """, env)
-
-    # or:
-    read_eval_print("""
-      (defmacro! or
-        (fn* (& xs)
-          (if (empty? xs)
-            nil
-            (if (= 1 (count xs))
-              (first xs)
-              `(let* (or_FIXME ~(first xs)) (if or_FIXME or_FIXME (or ~@(rest xs))))))))
       """, env)
 
     Mal.Env.set(env, "eval", %Function{value: fn [ast] ->
@@ -105,7 +94,7 @@ defmodule Mix.Tasks.Step8Macros do
     Mal.Reader.read_str(input)
   end
 
-  defp eval_bindings([], _env), do: _env
+  defp eval_bindings([], env), do: env
   defp eval_bindings([{:symbol, key}, binding | tail], env) do
     evaluated = eval(binding, env)
     Mal.Env.set(env, key, evaluated)
@@ -159,7 +148,7 @@ defmodule Mix.Tasks.Step8Macros do
     end
   end
 
-  defp eval({:list, [], _} = empty_ast, env), do: empty_ast
+  defp eval({:list, [], _} = empty_ast, _env), do: empty_ast
   defp eval({:list, _list, _meta} = ast, env) do
     case macroexpand(ast, env) do
       {:list, list, meta} -> eval_list(list, env, meta)

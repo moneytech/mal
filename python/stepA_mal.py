@@ -37,7 +37,7 @@ def is_macro_call(ast, env):
 def macroexpand(ast, env):
     while is_macro_call(ast, env):
         mac = env.get(ast[0])
-        ast = macroexpand(mac(*ast[1:]), env)
+        ast = mac(*ast[1:])
     return ast
 
 def eval_ast(ast, env):
@@ -87,7 +87,7 @@ def EVAL(ast, env):
             ast = quasiquote(ast[1]);
             # Continue loop (TCO)
         elif 'defmacro!' == a0:
-            func = EVAL(ast[2], env)
+            func = types._clone(EVAL(ast[2], env))
             func._ismacro_ = True
             return env.set(ast[1], func)
         elif 'macroexpand' == a0:
@@ -102,14 +102,19 @@ def EVAL(ast, env):
             f = eval(ast[1])
             return f(*el)
         elif "try*" == a0:
+            if len(ast) < 3:
+                return EVAL(ast[1], env)
             a1, a2 = ast[1], ast[2]
             if a2[0] == "catch*":
+                err = None
                 try:
-                    return EVAL(a1, env);
+                    return EVAL(a1, env)
+                except types.MalException as exc:
+                    err = exc.object
                 except Exception as exc:
-                    exc = exc.args[0]
-                    catch_env = Env(env, [a2[1]], [exc])
-                    return EVAL(a2[2], catch_env)
+                    err = exc.args[0]
+                catch_env = Env(env, [a2[1]], [err])
+                return EVAL(a2[2], catch_env)
             else:
                 return EVAL(a1, env);
         elif "do" == a0:
@@ -154,11 +159,8 @@ repl_env.set(types._symbol('*ARGV*'), types._list(*sys.argv[2:]))
 # core.mal: defined using the language itself
 REP("(def! *host-language* \"python\")")
 REP("(def! not (fn* (a) (if a false true)))")
-REP("(def! load-file (fn* (f) (eval (read-string (str \"(do \" (slurp f) \")\")))))")
+REP("(def! load-file (fn* (f) (eval (read-string (str \"(do \" (slurp f) \"\nnil)\")))))")
 REP("(defmacro! cond (fn* (& xs) (if (> (count xs) 0) (list 'if (first xs) (if (> (count xs) 1) (nth xs 1) (throw \"odd number of forms to cond\")) (cons 'cond (rest (rest xs)))))))")
-REP("(def! *gensym-counter* (atom 0))")
-REP("(def! gensym (fn* [] (symbol (str \"G__\" (swap! *gensym-counter* (fn* [x] (+ 1 x)))))))")
-REP("(defmacro! or (fn* (& xs) (if (empty? xs) nil (if (= 1 (count xs)) (first xs) (let* (condvar (gensym)) `(let* (~condvar ~(first xs)) (if ~condvar ~condvar (or ~@(rest xs)))))))))")
 
 if len(sys.argv) >= 2:
     REP('(load-file "' + sys.argv[1] + '")')
@@ -173,5 +175,7 @@ while True:
         if line == "": continue
         print(REP(line))
     except reader.Blank: continue
+    except types.MalException as e:
+        print("Error:", printer._pr_str(e.object))
     except Exception as e:
         print("".join(traceback.format_exception(*sys.exc_info())))

@@ -142,27 +142,10 @@ module REPL
         | node -> node |> eval_ast env
 
     let READ input =
-        try
-            Reader.read_str input
-        with
-        | Error.ReaderError(msg) ->
-            printfn "%s" msg
-            []
+        Reader.read_str input
 
     let EVAL env ast =
-        try
-            Some(eval env ast)
-        with
-        | Error.EvalError(str)
-        | Error.ReaderError(str) ->
-            printfn "%s" str
-            None
-        | Error.MalError(node) ->
-            printfn "%s" (Printer.pr_str [node])
-            None
-        | ex ->
-            printfn "%s" (ex.Message)
-            None
+        Some(eval env ast)
 
     let PRINT v =
         v
@@ -202,8 +185,7 @@ module REPL
 
         RE env """
             (def! not (fn* (a) (if a false true)))
-            (def! load-file (fn* (f) (eval (read-string (slurp f)))))
-            (defmacro! or (fn* (& xs) (if (empty? xs) nil (if (= 1 (count xs)) (first xs) `(let* (or_ ~(first xs)) (if or_ or_ (or ~@(rest xs))))))))
+            (def! load-file (fn* (f) (eval (read-string (str "(do " (slurp f) "\nnil)")))))
             (defmacro! cond (fn* (& xs) (if (> (count xs) 0) (list 'if (first xs) (if (> (count xs) 1) (nth xs 1) (throw "odd number of forms to cond")) (cons 'cond (rest (rest xs)))))))
             """ |> Seq.iter ignore
 
@@ -225,6 +207,13 @@ module REPL
                 match Readline.read "user> " mode with
                 | null -> 0
                 | input ->
-                    REP env input
+                    try
+                        REP env input
+                    with
+                    | Error.EvalError(str)
+                    | Error.ReaderError(str) ->
+                        printfn "Error: %s" str
+                    | ex ->
+                        printfn "Error: %s" (ex.Message)
                     loop ()
             loop ()

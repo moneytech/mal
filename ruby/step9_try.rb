@@ -94,7 +94,7 @@ def EVAL(ast, env)
     when :quasiquote
         ast = quasiquote(a1); # Continue loop (TCO)
     when :defmacro!
-        func = EVAL(a2, env)
+        func = EVAL(a2, env).clone
         func.is_macro = true
         return env.set(a1, func)
     when :macroexpand
@@ -111,7 +111,7 @@ def EVAL(ast, env)
             if a2 && a2[0] == :"catch*"
                 return EVAL(a2[2], Env.new(env, [a2[1]], [exc]))
             else
-                raise esc
+                raise exc
             end
         end
     when :do
@@ -160,9 +160,8 @@ repl_env.set(:"*ARGV*", List.new(ARGV.slice(1,ARGV.length) || []))
 
 # core.mal: defined using the language itself
 RE["(def! not (fn* (a) (if a false true)))"]
-RE["(def! load-file (fn* (f) (eval (read-string (str \"(do \" (slurp f) \")\")))))"]
+RE["(def! load-file (fn* (f) (eval (read-string (str \"(do \" (slurp f) \"\nnil)\")))))"]
 RE["(defmacro! cond (fn* (& xs) (if (> (count xs) 0) (list 'if (first xs) (if (> (count xs) 1) (nth xs 1) (throw \"odd number of forms to cond\")) (cons 'cond (rest (rest xs)))))))"]
-RE["(defmacro! or (fn* (& xs) (if (empty? xs) nil (if (= 1 (count xs)) (first xs) `(let* (or_FIXME ~(first xs)) (if or_FIXME or_FIXME (or ~@(rest xs))))))))"]
 
 if ARGV.size > 0
     RE["(load-file \"" + ARGV[0] + "\")"]
@@ -174,7 +173,11 @@ while line = _readline("user> ")
     begin
         puts REP[line]
     rescue Exception => e
-        puts "Error: #{e}" 
+        if e.is_a? MalException
+            puts "Error: #{_pr_str(e.data, true)}" 
+        else
+            puts "Error: #{e}" 
+        end
         puts "\t#{e.backtrace.join("\n\t")}"
     end
 end

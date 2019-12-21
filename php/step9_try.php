@@ -119,7 +119,7 @@ function MAL_EVAL($ast, $env) {
         if ($a2[0]->value === "catch*") {
             try {
                 return MAL_EVAL($a1, $env);
-            } catch (Error $e) {
+            } catch (_Error $e) {
                 $catch_env = new Env($env, array($a2[1]),
                                             array($e->obj));
                 return MAL_EVAL($a2[2], $catch_env);
@@ -190,9 +190,8 @@ $repl_env->set(_symbol('*ARGV*'), $_argv);
 
 // core.mal: defined using the language itself
 rep("(def! not (fn* (a) (if a false true)))");
-rep("(def! load-file (fn* (f) (eval (read-string (str \"(do \" (slurp f) \")\")))))");
+rep("(def! load-file (fn* (f) (eval (read-string (str \"(do \" (slurp f) \"\nnil)\")))))");
 rep("(defmacro! cond (fn* (& xs) (if (> (count xs) 0) (list 'if (first xs) (if (> (count xs) 1) (nth xs 1) (throw \"odd number of forms to cond\")) (cons 'cond (rest (rest xs)))))))");
-rep("(defmacro! or (fn* (& xs) (if (empty? xs) nil (if (= 1 (count xs)) (first xs) `(let* (or_FIXME ~(first xs)) (if or_FIXME or_FIXME (or ~@(rest xs))))))))");
 
 if (count($argv) > 1) {
     rep('(load-file "' . $argv[1] . '")');
@@ -209,6 +208,8 @@ do {
         }
     } catch (BlankException $e) {
         continue;
+    } catch (_Error $e) {
+        echo "Error: " . _pr_str($e->obj, True) . "\n";
     } catch (Exception $e) {
         echo "Error: " . $e->getMessage() . "\n";
         echo $e->getTraceAsString() . "\n";

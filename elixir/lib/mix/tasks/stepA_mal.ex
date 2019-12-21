@@ -35,7 +35,7 @@ defmodule Mix.Tasks.StepAMal do
     read_eval_print("""
       (def! load-file
         (fn* (f)
-          (eval (read-string (str "(do " (slurp f) ")")))))
+          (eval (read-string (str "(do " (slurp f) "\nnil)")))))
       """, env)
 
     # cond
@@ -48,27 +48,6 @@ defmodule Mix.Tasks.StepAMal do
                 (nth xs 1)
                 (throw \"odd number of forms to cond\"))
               (cons 'cond (rest (rest xs)))))))"
-      """, env)
-
-    # gensym
-    read_eval_print("(def! *gensym-counter* (atom 0))", env)
-    read_eval_print("""
-      (def! gensym
-        (fn* []
-          (symbol (str \"G__\" (swap! *gensym-counter* (fn* [x] (+ 1 x)))))))
-      """, env)
-
-    # or:
-    read_eval_print("""
-      (defmacro! or
-        (fn* (& xs)
-          (if (empty? xs)
-            nil
-            (if (= 1 (count xs))
-              (first xs)
-              (let* (condvar (gensym))
-                `(let* (~condvar ~(first xs))
-                  (if ~condvar ~condvar (or ~@(rest xs)))))))))
       """, env)
 
     Mal.Env.set(env, "eval", %Function{value: fn [ast] ->
@@ -124,7 +103,7 @@ defmodule Mix.Tasks.StepAMal do
     Mal.Reader.read_str(input)
   end
 
-  defp eval_bindings([], _env), do: _env
+  defp eval_bindings([], env), do: env
   defp eval_bindings([{:symbol, key}, binding | tail], env) do
     evaluated = eval(binding, env)
     Mal.Env.set(env, key, evaluated)
@@ -178,7 +157,7 @@ defmodule Mix.Tasks.StepAMal do
     end
   end
 
-  defp eval({:list, [], _} = empty_ast, env), do: empty_ast
+  defp eval({:list, [], _} = empty_ast, _env), do: empty_ast
   defp eval({:list, _list, _meta} = ast, env) do
     case macroexpand(ast, env) do
       {:list, list, meta} -> eval_list(list, env, meta)
@@ -250,6 +229,9 @@ defmodule Mix.Tasks.StepAMal do
   # (try* A (catch* B C))
   defp eval_list([{:symbol, "try*"}, try_form, {:list, catch_list, _meta}], env, _) do
     eval_try(try_form, catch_list, env)
+  end
+  defp eval_list([{:symbol, "try*"}, try_form], env, _) do
+    eval(try_form, env)
   end
   defp eval_list([{:symbol, "try*"}, _try_form, _], _env, _) do
     throw({:error, "try* requires a list as the second parameter"})

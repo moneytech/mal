@@ -370,19 +370,20 @@ SUB EVAL
 
     EVAL_TRY:
       REM PRINT "try*"
-      GOSUB EVAL_GET_A1: REM set A1, A2, and A3
+      GOSUB EVAL_GET_A1: REM set A1
 
       GOSUB PUSH_A: REM push/save A
       A=A1:CALL EVAL: REM eval A1
       GOSUB POP_A: REM pop/restore A
 
-      REM if there is not error or catch block then return
-      IF ER=-2 OR Z%(A+1)=0 THEN GOTO EVAL_RETURN
+      GOSUB EVAL_GET_A2: REM set A1 and A2
+
+      REM if there is no error or catch block then return
+      IF ER=-2 OR A2=0 THEN GOTO EVAL_RETURN
 
       REM create environment for the catch block eval
       C=E:GOSUB ENV_NEW:E=R
 
-      GOSUB EVAL_GET_A2: REM set A1 and A2
       A=A2:GOSUB EVAL_GET_A2: REM set A1 and A2 from catch block
 
       REM create object for ER=-1 type raw string errors
@@ -561,7 +562,7 @@ MAIN:
   A$="(def! not (fn* (a) (if a false true)))"
   GOSUB RE:AY=R:GOSUB RELEASE
 
-  A$="(def! load-file (fn* (f) (eval (read-file f))))"
+  A$="(def! load-file (fn* (f) (do (eval (read-file f)) nil)))"
   GOSUB RE:AY=R:GOSUB RELEASE
 
   A$="(defmacro! cond (fn* (& xs) (if (> (count xs) 0) (list 'if (first xs)"
@@ -569,12 +570,8 @@ MAIN:
   A$=A$+" forms to cond"+CHR$(34)+")) (cons 'cond (rest (rest xs)))))))"
   GOSUB RE:AY=R:GOSUB RELEASE
 
-  A$="(defmacro! or (fn* (& xs) (if (empty? xs) nil (if (= 1 (count xs)) (first xs)"
-  A$=A$+" `(let* (or_FIXME ~(first xs)) (if or_FIXME or_FIXME (or ~@(rest xs))))))))"
-  GOSUB RE:AY=R:GOSUB RELEASE
-
   REM load the args file
-  A$="(def! -*ARGS*- (load-file "+CHR$(34)+".args.mal"+CHR$(34)+"))"
+  A$="(load-file "+CHR$(34)+".args.mal"+CHR$(34)+")"
   GOSUB RE:AY=R:GOSUB RELEASE
 
   IF ER>-2 THEN GOSUB PRINT_ERROR:END
@@ -614,7 +611,8 @@ MAIN:
 
   QUIT:
     REM GOSUB PR_MEMORY_SUMMARY_SMALL
-    END
+    #cbm END
+    #qbasic SYSTEM
 
   PRINT_ERROR:
     REM if the error is an object, then print and free it

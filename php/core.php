@@ -6,7 +6,7 @@ require_once 'reader.php';
 require_once 'printer.php';
 
 // Error/Exception functions
-function mal_throw($obj) { throw new Error($obj); }
+function mal_throw($obj) { throw new _Error($obj); }
 
 
 // String functions
@@ -69,7 +69,8 @@ function get($hm, $k) {
 function contains_Q($hm, $k) { return array_key_exists($k, $hm); }
 
 function keys($hm) {
-    return call_user_func_array('_list', array_keys($hm->getArrayCopy()));
+    return call_user_func_array('_list',
+        array_map('strval', array_keys($hm->getArrayCopy())));
 }
 function vals($hm) {
     return call_user_func_array('_list', array_values($hm->getArrayCopy()));
@@ -209,12 +210,15 @@ $core_ns = array(
     'nil?'=>   function ($a) { return _nil_Q($a); },
     'true?'=>  function ($a) { return _true_Q($a); },
     'false?'=> function ($a) { return _false_Q($a); },
+    'number?'=> function ($a) { return _number_Q($a); },
     'symbol'=> function () { return call_user_func_array('_symbol', func_get_args()); },
     'symbol?'=> function ($a) { return _symbol_Q($a); },
     'keyword'=> function () { return call_user_func_array('_keyword', func_get_args()); },
     'keyword?'=> function ($a) { return _keyword_Q($a); },
 
     'string?'=> function ($a) { return _string_Q($a); },
+    'fn?'=>    function($a) { return _fn_Q($a) || (_function_Q($a) && !$a->ismacro ); },
+    'macro?'=> function($a) { return _function_Q($a) && $a->ismacro; },
     'pr-str'=> function () { return call_user_func_array('pr_str', func_get_args()); },
     'str'=>    function () { return call_user_func_array('str', func_get_args()); },
     'prn'=>    function () { return call_user_func_array('prn', func_get_args()); },

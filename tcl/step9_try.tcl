@@ -143,6 +143,9 @@ proc EVAL {ast env} {
                 return [macroexpand $a1 $env]
             }
             "try*" {
+                if {$a2 == ""} {
+                    return [EVAL $a1 $env]
+                }
                 set res {}
                 if { [catch { set res [EVAL $a1 $env] } exception] } {
                     set exc_var [obj_val [lindex [obj_val $a2] 1]]
@@ -240,9 +243,8 @@ $repl_env set "*ARGV*" [list_new $argv_list]
 
 # core.mal: defined using the language itself
 RE "(def! not (fn* (a) (if a false true)))" $repl_env
-RE "(def! load-file (fn* (f) (eval (read-string (str \"(do \" (slurp f) \")\")))))" $repl_env
+RE "(def! load-file (fn* (f) (eval (read-string (str \"(do \" (slurp f) \"\\nnil)\")))))" $repl_env
 RE "(defmacro! cond (fn* (& xs) (if (> (count xs) 0) (list 'if (first xs) (if (> (count xs) 1) (nth xs 1) (throw \"odd number of forms to cond\")) (cons 'cond (rest (rest xs)))))))" $repl_env
-RE "(defmacro! or (fn* (& xs) (if (empty? xs) nil (if (= 1 (count xs)) (first xs) `(let* (or_FIXME ~(first xs)) (if or_FIXME or_FIXME (or ~@(rest xs))))))))" $repl_env
 
 fconfigure stdout -translation binary
 
@@ -267,7 +269,12 @@ while {true} {
         continue
     }
     if { [catch { puts [REP $line $repl_env] } exception] } {
-        puts "Error: $exception"
+        if {$exception == "__MalException__"} {
+            set res [pr_str $::mal_exception_obj 1]
+            puts "Error: $res"
+        } else {
+            puts "Error: $exception"
+        }
         if { $DEBUG_MODE } {
             puts $::errorInfo
         }

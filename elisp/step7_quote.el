@@ -1,16 +1,11 @@
 ;; -*- lexical-binding: t; -*-
 
-(defun load-relative (file)
-  (let* ((current-file (or load-file-name buffer-file-name))
-         (current-file-directory (file-name-directory current-file)))
-    (load (expand-file-name file current-file-directory) nil t)))
-
-(load-relative "types.el")
-(load-relative "env.el")
-(load-relative "func.el")
-(load-relative "reader.el")
-(load-relative "printer.el")
-(load-relative "core.el")
+(require 'mal/types)
+(require 'mal/func)
+(require 'mal/env)
+(require 'mal/reader)
+(require 'mal/printer)
+(require 'mal/core)
 
 (defvar repl-env (mal-env))
 
@@ -155,7 +150,7 @@
   (PRINT (EVAL (READ input) repl-env)))
 
 (rep "(def! not (fn* (a) (if a false true)))")
-(rep "(def! load-file (fn* (f) (eval (read-string (str \"(do \" (slurp f) \")\")))))")
+(rep "(def! load-file (fn* (f) (eval (read-string (str \"(do \" (slurp f) \"\nnil)\")))))")
 
 (defun readln (prompt)
   ;; C-d throws an error

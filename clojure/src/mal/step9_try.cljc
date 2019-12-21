@@ -40,7 +40,9 @@
 (defn macroexpand [ast env]
   (loop [ast ast]
     (if (is-macro-call ast env)
-      (let [mac (env/env-get env (first ast))]
+      ;; Get original unadorned function because ClojureScript (1.10)
+      ;; limits functions with meta on them to arity 20
+      (let [mac (:orig (meta (env/env-get env (first ast))))]
         (recur (apply mac (rest ast))))
       ast)))
 
@@ -90,9 +92,12 @@
               (recur (quasiquote a1) env)
 
               'defmacro!
-              (let [func (with-meta (EVAL a2 env)
-                                    {:ismacro true})]
-                (env/env-set env a1 func))
+              (let [func (EVAL a2 env)
+                    ;; Preserve unadorned function to workaround
+                    ;; ClojureScript function-with-meta arity limit
+                    mac (with-meta func {:orig (:orig (meta func))
+                                         :ismacro true})]
+                (env/env-set env a1 mac))
 
               'macroexpand
               (macroexpand a1 env)
@@ -109,7 +114,8 @@
                   (catch #?(:clj Throwable :cljs :default) t
                     (EVAL (nth a2 2) (env/env env
                                               [(nth a2 1)]
-                                              [#?(:clj (.getMessage t)
+                                              [#?(:clj (or (.getMessage t)
+                                                           (.toString t))
                                                   :cljs (.-message t))]))))
                 (EVAL a1 env))
 
@@ -126,12 +132,16 @@
                   (recur a2 env)))
 
               'fn*
-              (with-meta
-                (fn [& args]
-                  (EVAL a2 (env/env env a1 (or args '()))))
-                {:expression a2
-                 :environment env
-                 :parameters a1})
+              (let [func (fn [& args]
+                           (EVAL a2 (env/env env a1 (or args '()))))]
+                (with-meta
+                  func
+                  ;; Preserve unadorned function to workaround
+                  ;; ClojureScript function-with-meta arity limit
+                  {:orig func
+                   :expression a2
+                   :environment env
+                   :parameters a1}))
 
               ;; apply
               (let [el (eval-ast ast env)
@@ -143,7 +153,7 @@
                   (apply f args))))))))))
 
 ;; print
-(defn PRINT [exp] (pr-str exp))
+(defn PRINT [exp] (printer/pr-str exp))
 
 ;; repl
 (def repl-env (env/env))
@@ -158,9 +168,8 @@
 
 ;; core.mal: defined using the language itself
 (rep "(def! not (fn* [a] (if a false true)))")
-(rep "(def! load-file (fn* [f] (eval (read-string (str \"(do \" (slurp f) \")\")))))")
+(rep "(def! load-file (fn* [f] (eval (read-string (str \"(do \" (slurp f) \"\nnil)\")))))")
 (rep "(defmacro! cond (fn* (& xs) (if (> (count xs) 0) (list 'if (first xs) (if (> (count xs) 1) (nth xs 1) (throw \"odd number of forms to cond\")) (cons 'cond (rest (rest xs)))))))")
-(rep "(defmacro! or (fn* (& xs) (if (empty? xs) nil (if (= 1 (count xs)) (first xs) `(let* (or_FIXME ~(first xs)) (if or_FIXME or_FIXME (or ~@(rest xs))))))))")
 
 ;; repl loop
 (defn repl-loop []
@@ -169,6 +178,9 @@
       (when-not (re-seq #"^\s*$|^\s*;.*$" line) ; blank/comment
         (try
           (println (rep line))
+          #?(:cljs (catch ExceptionInfo e
+                     (println "Error:" (or (:data (ex-data e))
+                                           (.-stack e)))))
           #?(:clj  (catch Throwable e (clojure.repl/pst e))
              :cljs (catch js/Error e (println (.-stack e))))))
       (recur))))

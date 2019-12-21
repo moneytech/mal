@@ -257,11 +257,17 @@ function EVAL_defmacro(ast, env,    idx, sym, ret, len)
 function EVAL_try(ast, env,    catch_body, catch_env,    idx, catch, catch_idx, catch_sym, ret, len, str)
 {
 	idx = substr(ast, 2)
-	if (types_heap[idx]["len"] != 3) {
-		len = types_heap[idx]["len"]
+	len = types_heap[idx]["len"]
+	if (len != 2 && len != 3) {
 		types_release(ast)
 		env_release(env)
-		return "!\"Invalid argument length for 'try*'. Expects exactly 2 arguments, supplied" (len - 1) "."
+		return "!\"Invalid argument length for 'try*'. Expects 1 or 2 arguments, supplied" (len - 1) "."
+	}
+	if (len == 2) {
+		ret = EVAL(types_addref(types_heap[idx][1]), env)
+		types_release(ast)
+		env_release(env)
+		return ret
 	}
 	catch = types_heap[idx][2]
 	if (catch !~ /^\(/) {
@@ -561,9 +567,8 @@ function main(str, ret, i, idx)
 	env_set(repl_env, "'eval", "&eval")
 
 	rep("(def! not (fn* (a) (if a false true)))")
-	rep("(def! load-file (fn* (f) (eval (read-string (str \"(do \" (slurp f) \")\")))))")
+	rep("(def! load-file (fn* (f) (eval (read-string (str \"(do \" (slurp f) \"\\nnil)\")))))")
 	rep("(defmacro! cond (fn* (& xs) (if (> (count xs) 0) (list 'if (first xs) (if (> (count xs) 1) (nth xs 1) (throw \"odd number of forms to cond\")) (cons 'cond (rest (rest xs)))))))")
-	rep("(defmacro! or (fn* (& xs) (if (empty? xs) nil (if (= 1 (count xs)) (first xs) `(let* (or_FIXME ~(first xs)) (if or_FIXME or_FIXME (or ~@(rest xs))))))))")
 
 	idx = types_allocate()
 	env_set(repl_env, "'*ARGV*", "(" idx)
